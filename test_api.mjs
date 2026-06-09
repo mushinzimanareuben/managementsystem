@@ -1,0 +1,197 @@
+import http from 'http';
+
+const BASE = 'http://localhost:5000/api';
+
+function request(method, path, body = null, token = null) {
+  return new Promise((resolve, reject) => {
+    const data = body ? JSON.stringify(body) : null;
+    const url = new URL(BASE + path);
+
+    const options = {
+      hostname: url.hostname,
+      port: url.port,
+      path: url.pathname + url.search,
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {}),
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      }
+    };
+
+    const req = http.request(options, (res) => {
+      let responseData = '';
+      res.on('data', chunk => responseData += chunk);
+      res.on('end', () => {
+        try {
+          resolve({ status: res.statusCode, body: JSON.parse(responseData) });
+        } catch {
+          resolve({ status: res.statusCode, body: responseData });
+        }
+      });
+    });
+
+    req.on('error', reject);
+    if (data) req.write(data);
+    req.end();
+  });
+}
+
+const tests = [];
+let pass = 0;
+let fail = 0;
+
+function test(name, fn) {
+  tests.push({ name, fn });
+}
+
+function assert(condition, message) {
+  if (!condition) throw new Error(`Assertion failed: ${message}`);
+}
+
+// --- Tests ---
+let adminToken = null;
+
+test('GET /api/health → 200 healthy', async () => {
+  const res = await request('GET', '/health');
+  assert(res.status === 200, `Expected 200, got ${res.status}`);
+  assert(res.body.status === 'healthy', 'Expected status=healthy');
+});
+
+test('POST /api/auth/login (admin) → 200 with JWT', async () => {
+  const res = await request('POST', '/auth/login', {
+    email: 'mushinzimananorbert3@gmail.com',
+    password: 'norbert@123'
+  });
+  assert(res.status === 200, `Expected 200, got ${res.status} – ${JSON.stringify(res.body)}`);
+  assert(res.body.token, 'Expected JWT token in response');
+  assert(res.body.role === 'admin', `Expected role=admin, got ${res.body.role}`);
+  adminToken = res.body.token;
+});
+
+test('POST /api/auth/login (bad credentials) → 401', async () => {
+  const res = await request('POST', '/auth/login', {
+    email: 'nobody@nope.com',
+    password: 'wrongpassword'
+  });
+  assert(res.status === 401, `Expected 401, got ${res.status}`);
+});
+
+test('GET /api/auth/me → 200 with admin profile', async () => {
+  const res = await request('GET', '/auth/me', null, adminToken);
+  assert(res.status === 200, `Expected 200, got ${res.status}`);
+  assert(res.body.role === 'admin', `Expected role=admin`);
+});
+
+test('GET /api/jobs → 200 array', async () => {
+  const res = await request('GET', '/jobs');
+  assert(res.status === 200, `Expected 200, got ${res.status}`);
+  assert(Array.isArray(res.body), 'Expected array response');
+});
+
+test('POST /api/jobs (admin) → 201 creates job', async () => {
+  const res = await request('POST', '/jobs', {
+    title: 'Senior React Developer',
+    department: 'Engineering',
+    location: 'Remote / London',
+    type: 'Full-time',
+    description: 'We are seeking an experienced React developer to join our growing product team.',
+    requirements: 'Min 4 years React experience. TypeScript proficiency. Strong problem solving skills.',
+    salaryRange: '$85,000 - $115,000',
+    status: 'open'
+  }, adminToken);
+  assert(res.status === 201, `Expected 201, got ${res.status} – ${JSON.stringify(res.body)}`);
+  assert(res.body.title === 'Senior React Developer', 'Job title mismatch');
+});
+
+test('POST /api/jobs (no auth) → 401', async () => {
+  const res = await request('POST', '/jobs', {
+    title: 'Unauthorized Job',
+    department: 'HR',
+    location: 'Unknown',
+    type: 'Full-time',
+    description: 'test',
+    requirements: 'test',
+    status: 'open'
+  });
+  assert(res.status === 401, `Expected 401, got ${res.status}`);
+});
+
+test('GET /api/analytics/dashboard (admin) → 200 with metrics', async () => {
+  const res = await request('GET', '/analytics/dashboard', null, adminToken);
+  assert(res.status === 200, `Expected 200, got ${res.status}`);
+  assert(res.body.metrics !== undefined, 'Expected metrics in response');
+  assert(typeof res.body.metrics.totalEmployees === 'number', 'Expected totalEmployees number');
+});
+
+test('GET /api/employees (admin) → 200 with employees list', async () => {
+  const res = await request('GET', '/employees', null, adminToken);
+  assert(res.status === 200, `Expected 200, got ${res.status}`);
+  assert(Array.isArray(res.body.employees), 'Expected employees array');
+  assert(res.body.employees.length >= 1, 'Expected at least 1 seeded employee');
+});
+
+test('GET /api/ads → 200 array (public)', async () => {
+  const res = await request('GET', '/ads');
+  assert(res.status === 200, `Expected 200, got ${res.status}`);
+  assert(Array.isArray(res.body), 'Expected array');
+});
+
+test('POST /api/submissions (contact form) → 201', async () => {
+  const res = await request('POST', '/submissions', {
+    type: 'customer_info',
+    data: {
+      name: 'John Test',
+      email: 'john@test.com',
+      subject: 'API Test Inquiry',
+      message: 'This is an automated API validation test submission.'
+    }
+  });
+  assert(res.status === 201, `Expected 201, got ${res.status} – ${JSON.stringify(res.body)}`);
+  assert(res.body.message, 'Expected success message');
+});
+
+test('GET /api/export/employees/excel (query token) → 200 Excel file', async () => {
+  const res = await request('GET', `/export/employees/excel?token=${adminToken}`);
+  assert(res.status === 200, `Expected 200, got ${res.status}`);
+});
+
+test('GET /api/export/employees/pdf (query token) → 200 PDF file', async () => {
+  const res = await request('GET', `/export/employees/pdf?token=${adminToken}`);
+  assert(res.status === 200, `Expected 200, got ${res.status}`);
+});
+
+test('GET /api/export/submissions/excel (query token) → 200 Excel file', async () => {
+  const res = await request('GET', `/export/submissions/excel?token=${adminToken}`);
+  assert(res.status === 200, `Expected 200, got ${res.status}`);
+});
+
+// --- Runner ---
+async function run() {
+  console.log('\n🔬 SCMS API Validation Tests\n' + '─'.repeat(50));
+
+  for (const { name, fn } of tests) {
+    try {
+      await fn();
+      console.log(`  ✅ PASS  ${name}`);
+      pass++;
+    } catch (err) {
+      console.log(`  ❌ FAIL  ${name}`);
+      console.log(`         ${err.message}`);
+      fail++;
+    }
+  }
+
+  console.log('\n' + '─'.repeat(50));
+  console.log(`Results: ${pass} passed, ${fail} failed out of ${tests.length} tests`);
+
+  if (fail === 0) {
+    console.log('🎉 All API tests passed! System is fully operational.\n');
+  } else {
+    console.log('⚠️  Some tests failed. Review output above.\n');
+  }
+
+  process.exit(fail > 0 ? 1 : 0);
+}
+
+run();
