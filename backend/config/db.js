@@ -11,7 +11,19 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbType = process.env.DB_TYPE || 'sqlite';
 let sequelize;
 
-if (dbType === 'sqlite') {
+if (process.env.DATABASE_URL) {
+  sequelize = new Sequelize(process.env.DATABASE_URL, {
+    dialect: 'postgres',
+    logging: false,
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false,
+      },
+    },
+  });
+  console.log('Database Config: Initialized Sequelize with PostgreSQL (Render/External URL).');
+} else if (dbType === 'sqlite') {
   sequelize = new Sequelize({
     dialect: 'sqlite',
     storage: path.join(__dirname, '..', 'database.sqlite'),

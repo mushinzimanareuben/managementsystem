@@ -28,8 +28,9 @@ export default function AdminDashboard() {
   // Modals state
   const [showEmpModal, setShowEmpModal] = useState(false);
   const [selectedEmp, setSelectedEmp] = useState(null);
-  const [empForm, setEmpForm] = useState({ fullName: '', email: '', phoneNumber: '', position: '', department: 'Engineering', salary: '', address: '', status: 'active' });
+  const [empForm, setEmpForm] = useState({ fullName: '', email: '', phoneNumber: '', position: '', department: 'Engineering', salary: '', address: '', employmentDate: '', status: 'active' });
   const [empPhoto, setEmpPhoto] = useState(null);
+  const [empError, setEmpError] = useState('');
 
   const [showJobModal, setShowJobModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
@@ -242,8 +243,13 @@ export default function AdminDashboard() {
   // 1. Employees
   const handleSaveEmployee = async (e) => {
     e.preventDefault();
+    setEmpError('');
     const formData = new FormData();
-    Object.keys(empForm).forEach(key => formData.append(key, empForm[key]));
+    Object.keys(empForm).forEach(key => {
+      if (empForm[key] !== '' && empForm[key] !== null && empForm[key] !== undefined) {
+        formData.append(key, empForm[key]);
+      }
+    });
     if (empPhoto) formData.append('photo', empPhoto);
 
     const url = selectedEmp ? `${API_URL}/employees/${selectedEmp.id}` : `${API_URL}/employees`;
@@ -259,16 +265,17 @@ export default function AdminDashboard() {
         setShowEmpModal(false);
         setSelectedEmp(null);
         setEmpPhoto(null);
-        setEmpForm({ fullName: '', email: '', phoneNumber: '', position: '', department: 'Engineering', salary: '', address: '', status: 'active' });
+        setEmpError('');
+        setEmpForm({ fullName: '', email: '', phoneNumber: '', position: '', department: 'Engineering', salary: '', address: '', employmentDate: '', status: 'active' });
         loadEmployees();
         loadDashboardData();
       } else {
         const errorData = await response.json();
-        alert(errorData.message || 'Failed to save employee');
+        setEmpError(errorData.message || 'Failed to save employee. Please check all fields.');
       }
     } catch (err) {
       console.error(err);
-      alert('Network error: failed to save employee');
+      setEmpError('Network error: Could not reach the server. Please try again.');
     }
   };
 
@@ -625,7 +632,7 @@ export default function AdminDashboard() {
                 <p style={{ color: 'var(--text-secondary)' }}>Manage profiles, salaries, roles, and status levels.</p>
               </div>
               <div className="flex gap-1 flex-wrap-mobile">
-                <button className="btn btn-primary" onClick={() => { setSelectedEmp(null); setEmpForm({ fullName: '', email: '', phoneNumber: '', position: '', department: 'Engineering', salary: '', address: '', status: 'active' }); setShowEmpModal(true); }}>
+                <button className="btn btn-primary" onClick={() => { setSelectedEmp(null); setEmpError(''); setEmpForm({ fullName: '', email: '', phoneNumber: '', position: '', department: 'Engineering', salary: '', address: '', employmentDate: '', status: 'active' }); setShowEmpModal(true); }}>
                   <Plus size={16} /> Add Employee
                 </button>
                 <button className="btn btn-secondary" onClick={() => triggerExport('employees/excel')}>
@@ -694,15 +701,17 @@ export default function AdminDashboard() {
                         <div className="flex gap-1">
                           <button className="btn-icon" onClick={() => {
                             setSelectedEmp(emp);
+                            setEmpError('');
                             setEmpForm({
-                              fullName: emp.fullName,
-                              email: emp.email,
+                              fullName: emp.fullName || '',
+                              email: emp.email || '',
                               phoneNumber: emp.phoneNumber || '',
-                              position: emp.position,
-                              department: emp.department,
-                              salary: emp.salary,
+                              position: emp.position || '',
+                              department: emp.department || 'Engineering',
+                              salary: emp.salary || '',
                               address: emp.address || '',
-                              status: emp.status
+                              employmentDate: emp.employmentDate || '',
+                              status: emp.status || 'active'
                             });
                             setShowEmpModal(true);
                           }}>
@@ -730,47 +739,56 @@ export default function AdminDashboard() {
             {showEmpModal && (
               <div className="modal-overlay">
                 <div className="modal-content">
-                  <button className="modal-close" onClick={() => setShowEmpModal(false)}><X size={20} /></button>
-                  <h3>{selectedEmp ? 'Edit Profile' : 'Register New Employee'}</h3>
-                  <form onSubmit={handleSaveEmployee} style={{ marginTop: '1.5rem' }}>
+                  <button className="modal-close" onClick={() => { setShowEmpModal(false); setEmpError(''); }}><X size={20} /></button>
+                  <h3>{selectedEmp ? 'Edit Employee Profile' : 'Register New Employee'}</h3>
+
+                  {empError && (
+                    <div style={{ background: 'var(--danger-light)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)', padding: '0.75rem 1rem', marginTop: '1rem', fontSize: '0.9rem', fontWeight: 500 }}>
+                      ⚠️ {empError}
+                    </div>
+                  )}
+
+                  <form onSubmit={handleSaveEmployee} style={{ marginTop: '1.25rem' }}>
                     <div className="form-group">
-                      <label className="form-label">Full Name</label>
-                      <input type="text" className="form-input" value={empForm.fullName} onChange={e => setEmpForm({ ...empForm, fullName: e.target.value })} required />
+                      <label className="form-label">Full Name *</label>
+                      <input type="text" className="form-input" placeholder="e.g. John Smith" value={empForm.fullName} onChange={e => setEmpForm({ ...empForm, fullName: e.target.value })} required />
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Email</label>
-                      <input type="email" className="form-input" value={empForm.email} onChange={e => setEmpForm({ ...empForm, email: e.target.value })} required disabled={!!selectedEmp} />
+                      <label className="form-label">Email Address *</label>
+                      <input type="email" className="form-input" placeholder="e.g. john@company.com" value={empForm.email} onChange={e => setEmpForm({ ...empForm, email: e.target.value })} required disabled={!!selectedEmp} />
                     </div>
                     <div className="grid grid-2">
                       <div className="form-group">
-                        <label className="form-label">Phone</label>
-                        <input type="text" className="form-input" value={empForm.phoneNumber} onChange={e => setEmpForm({ ...empForm, phoneNumber: e.target.value })} />
+                        <label className="form-label">Phone Number</label>
+                        <input type="text" className="form-input" placeholder="e.g. +1 555 0123" value={empForm.phoneNumber} onChange={e => setEmpForm({ ...empForm, phoneNumber: e.target.value })} />
                       </div>
                       <div className="form-group">
-                        <label className="form-label">Position</label>
-                        <input type="text" className="form-input" value={empForm.position} onChange={e => setEmpForm({ ...empForm, position: e.target.value })} required />
+                        <label className="form-label">Position / Job Title *</label>
+                        <input type="text" className="form-input" placeholder="e.g. Software Engineer" value={empForm.position} onChange={e => setEmpForm({ ...empForm, position: e.target.value })} required />
                       </div>
                     </div>
                     <div className="grid grid-2">
                       <div className="form-group">
-                        <label className="form-label">Department</label>
+                        <label className="form-label">Department *</label>
                         <select className="form-select" value={empForm.department} onChange={e => setEmpForm({ ...empForm, department: e.target.value })}>
                           <option value="Engineering">Engineering</option>
                           <option value="Marketing">Marketing</option>
                           <option value="Operations">Operations</option>
                           <option value="HR">HR</option>
+                          <option value="Finance">Finance</option>
+                          <option value="Sales">Sales</option>
                         </select>
                       </div>
                       <div className="form-group">
-                        <label className="form-label">Salary</label>
-                        <input type="number" className="form-input" value={empForm.salary} onChange={e => setEmpForm({ ...empForm, salary: e.target.value })} required />
+                        <label className="form-label">Annual Salary ($) *</label>
+                        <input type="number" min="0" step="0.01" className="form-input" placeholder="e.g. 75000" value={empForm.salary} onChange={e => setEmpForm({ ...empForm, salary: e.target.value })} required />
                       </div>
                     </div>
-                    <div className="form-group">
-                      <label className="form-label">Address</label>
-                      <input type="text" className="form-input" value={empForm.address} onChange={e => setEmpForm({ ...empForm, address: e.target.value })} />
-                    </div>
                     <div className="grid grid-2">
+                      <div className="form-group">
+                        <label className="form-label">Employment Date</label>
+                        <input type="date" className="form-input" value={empForm.employmentDate} onChange={e => setEmpForm({ ...empForm, employmentDate: e.target.value })} />
+                      </div>
                       <div className="form-group">
                         <label className="form-label">Status</label>
                         <select className="form-select" value={empForm.status} onChange={e => setEmpForm({ ...empForm, status: e.target.value })}>
@@ -779,12 +797,25 @@ export default function AdminDashboard() {
                           <option value="terminated">Terminated</option>
                         </select>
                       </div>
-                      <div className="form-group">
-                        <label className="form-label">Photo Upload</label>
-                        <input type="file" onChange={e => setEmpPhoto(e.target.files[0])} />
-                      </div>
                     </div>
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1.5rem' }}>Save Employee</button>
+                    <div className="form-group">
+                      <label className="form-label">Address</label>
+                      <input type="text" className="form-input" placeholder="e.g. 123 Main St, Kigali" value={empForm.address} onChange={e => setEmpForm({ ...empForm, address: e.target.value })} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Profile Photo</label>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/jpg,image/webp"
+                        className="form-input"
+                        style={{ padding: '0.5rem', cursor: 'pointer' }}
+                        onChange={e => setEmpPhoto(e.target.files[0])}
+                      />
+                      {selectedEmp && <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginTop: '0.3rem' }}>Leave blank to keep the existing photo.</div>}
+                    </div>
+                    <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
+                      {selectedEmp ? '💾 Update Employee' : '➕ Register Employee'}
+                    </button>
                   </form>
                 </div>
               </div>
