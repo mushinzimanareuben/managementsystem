@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { User, Phone, MapPin, Mail, Calendar, Briefcase, DollarSign, Upload, Bell, CheckCircle } from 'lucide-react';
 
 export default function EmployeeDashboard() {
-  const { user, token, API_URL } = useAuth();
+  const { user, token, API_URL, BACKEND_URL } = useAuth();
   const [employee, setEmployee] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -113,7 +113,7 @@ export default function EmployeeDashboard() {
         {/* Profile Card */}
         <div className="card flex flex-col align-center text-center" style={{ gridColumn: 'span 1' }}>
           <img 
-            src={employee.photoUrl ? (employee.photoUrl.startsWith('/uploads') ? `http://localhost:5000${employee.photoUrl}` : employee.photoUrl) : 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80'} 
+            src={employee.photoUrl ? (employee.photoUrl.startsWith('/uploads') ? `${BACKEND_URL}${employee.photoUrl}` : employee.photoUrl) : 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80'} 
             alt={employee.fullName} 
             style={{ width: '130px', height: '130px', borderRadius: '50%', objectFit: 'cover', border: '4px solid var(--primary)', marginBottom: '1rem' }}
           />
@@ -228,7 +228,7 @@ export default function EmployeeDashboard() {
                       <p style={{ color: 'var(--text-secondary)', fontSize: '0.925rem', marginBottom: '0.75rem' }}>{notice.description}</p>
                       {notice.mediaUrl && (
                         <img 
-                          src={notice.mediaUrl.startsWith('/uploads') ? `http://localhost:5000${notice.mediaUrl}` : notice.mediaUrl} 
+                          src={notice.mediaUrl.startsWith('/uploads') ? `${BACKEND_URL}${notice.mediaUrl}` : notice.mediaUrl} 
                           alt={notice.title} 
                           style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: 'var(--radius-sm)', objectFit: 'cover' }}
                         />

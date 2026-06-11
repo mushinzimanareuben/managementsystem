@@ -421,6 +421,122 @@ button {
   color: var(--primary);
 }
 
+/* Hamburger Button */
+.nav-mobile-controls {
+  display: none;
+}
+
+.hamburger-btn {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0.4rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.hamburger-btn:hover {
+  background-color: var(--primary-light);
+  border-color: var(--primary);
+}
+
+.hamburger-bar {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background-color: var(--text-primary);
+  border-radius: 2px;
+  transition: transform var(--transition-normal), opacity var(--transition-fast), width var(--transition-normal);
+  transform-origin: center;
+}
+
+/* Hamburger → X animation */
+.hamburger-btn.open .hamburger-bar:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.hamburger-btn.open .hamburger-bar:nth-child(2) {
+  opacity: 0;
+  width: 0;
+}
+.hamburger-btn.open .hamburger-bar:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* Mobile Drawer Menu */
+.mobile-menu {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+  opacity: 0;
+}
+
+.mobile-menu--open {
+  max-height: 500px;
+  opacity: 1;
+}
+
+.mobile-menu-inner {
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem 1.5rem 1.25rem;
+  border-top: 1px solid var(--border-color);
+  gap: 0.25rem;
+}
+
+.mobile-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.mobile-nav-link:hover {
+  background-color: var(--primary-light);
+  color: var(--primary);
+}
+
+.mobile-nav-link--danger {
+  color: var(--danger);
+}
+
+.mobile-nav-link--danger:hover {
+  background-color: var(--danger-light);
+  color: var(--danger);
+}
+
+.mobile-menu-divider {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 0.5rem 0;
+}
+
+@media (max-width: 768px) {
+  .nav-links {
+    display: none;
+  }
+
+  .nav-mobile-controls {
+    display: flex;
+  }
+}
+
 /* Hero Section */
 .hero {
   position: relative;
@@ -600,4 +716,27 @@ button {
 
 .modal-close:hover {
   color: var(--text-primary);
+}
+
+/* Contact Info Link Hover */
+.contact-link-item {
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.contact-link-item:hover {
+  background-color: var(--primary-light);
+  transform: translateX(4px);
+}
+
+/* Ad promotion card pulse */
+@keyframes adPulse {
+  0%, 100% { box-shadow: var(--shadow-md); }
+  50% { box-shadow: 0 0 24px 4px rgba(59, 130, 246, 0.18); }
+}
+
+.glass-card:hover {
+  animation: adPulse 2s ease-in-out infinite;
+  border-color: var(--primary);
 }

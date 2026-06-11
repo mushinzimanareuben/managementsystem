@@ -11,7 +11,7 @@ import {
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
 export default function AdminDashboard() {
-  const { token, logout, API_URL } = useAuth();
+  const { token, logout, API_URL, BACKEND_URL } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
 
   // Stats & Charts Data
@@ -453,7 +453,7 @@ export default function AdminDashboard() {
                     <tr key={emp.id}>
                       <td>
                         <div className="flex align-center gap-2">
-                          <img src={emp.photoUrl ? (emp.photoUrl.startsWith('/uploads') ? `http://localhost:5000${emp.photoUrl}` : emp.photoUrl) : 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&auto=format&fit=crop&q=80'} style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }} />
+                          <img src={emp.photoUrl ? (emp.photoUrl.startsWith('/uploads') ? `${BACKEND_URL}${emp.photoUrl}` : emp.photoUrl) : 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&auto=format&fit=crop&q=80'} style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }} />
                           <div>
                             <strong>{emp.fullName}</strong>
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{emp.email}</div>
@@ -731,7 +731,7 @@ export default function AdminDashboard() {
                     <tr key={ad.id}>
                       <td>
                         <div className="flex align-center gap-2">
-                          {ad.mediaUrl && <img src={ad.mediaUrl.startsWith('/uploads') ? `http://localhost:5000${ad.mediaUrl}` : ad.mediaUrl} style={{ width: '50px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} />}
+                          {ad.mediaUrl && <img src={ad.mediaUrl.startsWith('/uploads') ? `${BACKEND_URL}${ad.mediaUrl}` : ad.mediaUrl} style={{ width: '50px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} />}
                           <div>
                             <strong>{ad.title}</strong>
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Type: {ad.mediaType}</div>
@@ -910,7 +910,7 @@ export default function AdminDashboard() {
                         </td>
                         <td>
                           {sub.cvUrl ? (
-                            <a href={`http://localhost:5000${sub.cvUrl}`} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                            <a href={`${BACKEND_URL}${sub.cvUrl}`} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
                               <FileText size={12} /> Download CV
                             </a>
                           ) : 'N/A'}

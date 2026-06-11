@@ -4,7 +4,7 @@ import { ArrowRight, Users, Briefcase, Award, CheckCircle, Mail, Phone, MapPin, 
 import heroImage from '../assets/hero.png';
 
 export default function Home() {
-  const { API_URL } = useAuth();
+  const { API_URL, BACKEND_URL } = useAuth();
   const [jobs, setJobs] = useState([]);
   const [ads, setAds] = useState([]);
   const [contactData, setContactData] = useState({ name: '', email: '', subject: '', message: '' });
@@ -21,10 +21,10 @@ export default function Home() {
       .then(data => setJobs(data.slice(0, 3)))
       .catch(console.error);
 
-    // Fetch advertisements
+    // Fetch advertisements - show ALL ads
     fetch(`${API_URL}/ads`)
       .then(res => res.json())
-      .then(data => setAds(data.slice(0, 2)))
+      .then(data => setAds(data))
       .catch(console.error);
   }, [API_URL]);
 
@@ -94,7 +94,7 @@ export default function Home() {
               <p style={{ fontSize: '0.9rem', margin: '0.5rem 0 1rem' }}>{ads[0].description}</p>
               {ads[0].mediaUrl && (
                 <img 
-                  src={ads[0].mediaUrl.startsWith('/uploads') ? `http://localhost:5000${ads[0].mediaUrl}` : ads[0].mediaUrl} 
+                  src={ads[0].mediaUrl.startsWith('/uploads') ? `${BACKEND_URL}${ads[0].mediaUrl}` : ads[0].mediaUrl} 
                   alt={ads[0].title} 
                   style={{ width: '100%', borderRadius: 'var(--radius-sm)', maxHeight: '180px', objectFit: 'cover', marginBottom: '1rem' }}
                 />
@@ -245,6 +245,46 @@ export default function Home() {
         </section>
       )}
 
+      {/* Featured Advertisements Section */}
+      {ads.length > 0 && (
+        <section className="section" style={{ background: 'linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%)' }}>
+          <div className="container">
+            <div className="section-title">
+              <div className="badge badge-warning" style={{ marginBottom: '0.75rem', fontSize: '0.8rem' }}>📢 LATEST PROMOTIONS</div>
+              <h2>Featured Announcements</h2>
+              <p>Stay updated with our latest offers, news, and campaigns.</p>
+            </div>
+            <div className="grid grid-3">
+              {ads.map(ad => (
+                <div key={ad.id} className="card glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div className="badge badge-primary" style={{ alignSelf: 'flex-start' }}>Sponsored</div>
+                  {ad.mediaUrl && (
+                    <img
+                      src={ad.mediaUrl.startsWith('/uploads') ? `${BACKEND_URL}${ad.mediaUrl}` : ad.mediaUrl}
+                      alt={ad.title}
+                      style={{ width: '100%', borderRadius: 'var(--radius-sm)', maxHeight: '200px', objectFit: 'cover' }}
+                    />
+                  )}
+                  <h4 style={{ margin: 0 }}>{ad.title}</h4>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0, flex: 1 }}>{ad.description}</p>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>📅 Ends: {ad.endDate}</div>
+                  <a
+                    href={ad.promotionLink || '#'}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-primary"
+                    style={{ width: '100%', textAlign: 'center' }}
+                    onClick={() => handleAdClick(ad.id)}
+                  >
+                    Learn More
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Testimonials */}
       <section className="section" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
         <div className="container">
@@ -283,28 +323,49 @@ export default function Home() {
             <div className="card" style={{ flex: 1, minWidth: '300px' }}>
               <h3>Contact Information</h3>
               <p style={{ margin: '1rem 0 2rem', color: 'var(--text-secondary)' }}>Reach out via the channels below or drop a request directly in the form.</p>
-              <div className="flex flex-col gap-3">
-                <div className="flex align-center gap-2">
+                <div className="flex flex-col gap-3">
+                <a
+                  href="mailto:mushinzimanareuben@gmail.com"
+                  className="flex align-center gap-2 contact-link-item"
+                  style={{ textDecoration: 'none', color: 'inherit' }}
+                  title="Send us an email"
+                >
                   <Mail className="stat-icon" style={{ padding: '0.5rem' }} />
                   <div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Email Us</div>
                     <strong>mushinzimanareuben@gmail.com</strong>
                   </div>
-                </div>
-                <div className="flex align-center gap-2">
-                  <Phone className="stat-icon" style={{ padding: '0.5rem' }} />
+                </a>
+                <a
+                  href="https://wa.me/250785037571"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex align-center gap-2 contact-link-item"
+                  style={{ textDecoration: 'none', color: 'inherit' }}
+                  title="Chat on WhatsApp"
+                >
+                  <Phone className="stat-icon" style={{ padding: '0.5rem', backgroundColor: 'var(--success-light)', color: 'var(--success)' }} />
                   <div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>WhatsApp Us</div>
-                    <strong>+250785037571</strong>
+                    <strong>+250 785 037 571</strong>
                   </div>
-                </div>
-                <div className="flex align-center gap-2">
-                  <MapPin className="stat-icon" style={{ padding: '0.5rem' }} />
+                </a>
+                <a
+                  href="https://www.google.com/maps/search/Butsure+Village,+Kigabiro+Cell,+Nyabitekeri+Sector,+Nyamasheke+District,+Western+Province,+Rwanda"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex align-center gap-2 contact-link-item"
+                  style={{ textDecoration: 'none', color: 'inherit' }}
+                  title="View on Google Maps"
+                >
+                  <MapPin className="stat-icon" style={{ padding: '0.5rem', backgroundColor: 'var(--warning-light)', color: 'var(--warning)' }} />
                   <div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Headquarters</div>
-                    <strong>100 Enterprise Way, Suite 400</strong>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Our Location</div>
+                    <strong>Butsure Village, Kigabiro Cell</strong>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Nyabitekeri Sector, Nyamasheke District</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Western Province, Rwanda</div>
                   </div>
-                </div>
+                </a>
               </div>
             </div>
 

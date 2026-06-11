@@ -36,9 +36,15 @@ export default function Footer() {
               For support inquiries, system integration, or employee profile linkages, contact our operations center.
             </p>
             <div className="flex flex-col gap-2" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-              <div className="flex align-center gap-1"><Mail size={14} /> mushinzimanareuben@gmail.com</div>
-              <div className="flex align-center gap-1"><Phone size={14} /> +250785037571 (WhatsApp)</div>
-              <div className="flex align-center gap-1"><MapPin size={14} /> 100 Enterprise Way, Boston MA</div>
+              <a href="mailto:mushinzimanareuben@gmail.com" className="flex align-center gap-1" style={{ color: 'inherit', textDecoration: 'none' }} title="Send Email">
+                <Mail size={14} /> mushinzimanareuben@gmail.com
+              </a>
+              <a href="https://wa.me/250785037571" target="_blank" rel="noreferrer" className="flex align-center gap-1" style={{ color: 'inherit', textDecoration: 'none' }} title="Chat on WhatsApp">
+                <Phone size={14} /> +250 785 037 571 (WhatsApp)
+              </a>
+              <a href="https://www.google.com/maps/search/Butsure+Village,+Kigabiro+Cell,+Nyabitekeri+Sector,+Nyamasheke+District,+Western+Province,+Rwanda" target="_blank" rel="noreferrer" className="flex align-center gap-1" style={{ color: 'inherit', textDecoration: 'none' }} title="View on Google Maps">
+                <MapPin size={14} /> Butsure, Nyamasheke, Western Province, Rwanda
+              </a>
             </div>
           </div>
         </div>

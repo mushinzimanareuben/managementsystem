@@ -8,6 +8,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const BACKEND_URL = API_URL.replace(/\/api$/, '');
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -73,7 +74,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout, API_URL }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout, API_URL, BACKEND_URL }}>
       {children}
     </AuthContext.Provider>
   );
