@@ -4,6 +4,8 @@ import MongoSubmission from '../models/mongoSubmission.js';
 import { isMongoConnected } from '../config/db.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { upload, handleUpload } from '../middleware/upload.js';
+import { logActivity } from '../middleware/audit.js';
+import { sendMockEmail } from '../services/email.js';
 
 const router = express.Router();
 
@@ -50,9 +52,45 @@ router.post('/', upload.single('cv'), async (req, res) => {
         cvUrl,
         status: 'pending'
       });
-      // Convert to JSON and format keys to look identical
       savedSubmission = submission.toJSON();
       console.log(`Submissions Route: Saved to Sequelize SQL DB (ID: ${savedSubmission.id})`);
+    }
+
+    // Log Activity for new submission
+    const userEmail = parsedData.email || parsedData.applicantEmail || 'anonymous';
+    await logActivity(
+      null,
+      userEmail,
+      'create_submission',
+      { type, submissionId: savedSubmission.id || savedSubmission._id },
+      req.ip
+    );
+
+    // Send Mock Emails
+    if (type === 'job_application') {
+      await sendMockEmail({
+        to: parsedData.applicantEmail,
+        subject: `Application Received: ${parsedData.jobTitle}`,
+        body: `Dear ${parsedData.applicantName},\n\nThank you for applying for the ${parsedData.jobTitle} position at our company.\n\nWe have received your application and cover letter. Our recruitment team will review your profile and contact you if your qualifications match our needs.\n\nBest regards,\nHR Department`
+      });
+      // Also notify HR
+      await sendMockEmail({
+        to: 'hr@company.com',
+        subject: `[New Application] ${parsedData.jobTitle} - ${parsedData.applicantName}`,
+        body: `A new application has been submitted for the position: ${parsedData.jobTitle}.\n\nApplicant: ${parsedData.applicantName}\nEmail: ${parsedData.applicantEmail}\nPhone: ${parsedData.applicantPhone}\nCover Letter: ${parsedData.coverLetter}\nResume Link: ${cvUrl || 'No resume attached'}`
+      });
+    } else if (type === 'customer_info') {
+      await sendMockEmail({
+        to: parsedData.email,
+        subject: `Inquiry Received: ${parsedData.subject || 'Thank you for contacting us'}`,
+        body: `Dear ${parsedData.name},\n\nThank you for reaching out to us. We have successfully received your message regarding: "${parsedData.subject || 'General inquiry'}".\n\nOur customer relations team will review it and reply to you as soon as possible.\n\nBest regards,\nClient Services Team`
+      });
+      // Notify Sales
+      await sendMockEmail({
+        to: 'sales@company.com',
+        subject: `[New Inquiry] ${parsedData.subject || 'General'} - ${parsedData.name}`,
+        body: `A new contact submission has been received:\n\nName: ${parsedData.name}\nEmail: ${parsedData.email}\nSubject: ${parsedData.subject}\nMessage: ${parsedData.message}`
+      });
     }
 
     res.status(201).json({
@@ -70,29 +108,63 @@ router.post('/', upload.single('cv'), async (req, res) => {
 // @access  Private (Admin only)
 router.get('/', protect, adminOnly, async (req, res) => {
   try {
-    const { type, status } = req.query;
-
-    let submissions = [];
+    const { page, limit, type, status } = req.query;
 
     if (isMongoConnected) {
       const query = {};
       if (type) query.type = type;
       if (status) query.status = status;
 
-      submissions = await MongoSubmission.find(query).sort({ createdAt: -1 });
+      if (page || limit) {
+        const p = parseInt(page) || 1;
+        const l = parseInt(limit) || 10;
+        const skip = (p - 1) * l;
+        
+        const total = await MongoSubmission.countDocuments(query);
+        const submissions = await MongoSubmission.find(query).sort({ createdAt: -1 }).skip(skip).limit(l);
+        
+        return res.json({
+          submissions,
+          totalPages: Math.ceil(total / l),
+          currentPage: p,
+          totalSubmissions: total
+        });
+      } else {
+        const submissions = await MongoSubmission.find(query).sort({ createdAt: -1 });
+        return res.json(submissions);
+      }
     } else {
       const whereClause = {};
       if (type) whereClause.type = type;
       if (status) whereClause.status = status;
 
-      const sqlResults = await SqlSubmission.findAll({
-        where: whereClause,
-        order: [['createdAt', 'DESC']]
-      });
-      submissions = sqlResults.map(item => item.toJSON());
-    }
+      if (page || limit) {
+        const p = parseInt(page) || 1;
+        const l = parseInt(limit) || 10;
+        const offset = (p - 1) * l;
 
-    res.json(submissions);
+        const { count, rows } = await SqlSubmission.findAndCountAll({
+          where: whereClause,
+          limit: l,
+          offset: offset,
+          order: [['createdAt', 'DESC']]
+        });
+
+        return res.json({
+          submissions: rows.map(item => item.toJSON()),
+          totalPages: Math.ceil(count / l),
+          currentPage: p,
+          totalSubmissions: count
+        });
+      } else {
+        const sqlResults = await SqlSubmission.findAll({
+          where: whereClause,
+          order: [['createdAt', 'DESC']]
+        });
+        const submissions = sqlResults.map(item => item.toJSON());
+        return res.json(submissions);
+      }
+    }
   } catch (error) {
     console.error('Get submissions error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -131,6 +203,14 @@ router.put('/:id/status', protect, adminOnly, async (req, res) => {
       updatedSubmission = submission.toJSON();
     }
 
+    await logActivity(
+      req.user.id,
+      req.user.email,
+      'update_submission_status',
+      { submissionId: req.params.id, status },
+      req.ip
+    );
+
     res.json({
       message: 'Submission status successfully updated',
       submission: updatedSubmission
@@ -162,6 +242,14 @@ router.delete('/:id', protect, adminOnly, async (req, res) => {
     if (!deleted) {
       return res.status(404).json({ message: 'Submission not found' });
     }
+
+    await logActivity(
+      req.user.id,
+      req.user.email,
+      'delete_submission',
+      { submissionId: req.params.id },
+      req.ip
+    );
 
     res.json({ message: 'Submission successfully deleted' });
   } catch (error) {

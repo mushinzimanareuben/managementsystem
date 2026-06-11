@@ -1,0 +1,8 @@
+{
+  "id": "mail_1781193270167_813ngqmk1",
+  "from": "no-reply@company.com",
+  "to": "employee_test_email@example.com",
+  "subject": "Welcome to Smart Company - Your Employee Account Created",
+  "body": "Hello Test Employee One,\n\nYour employee account has been created successfully.\n\nCredentials:\nEmail: employee_test_email@example.com\nPassword: Employee123!\n\nPlease login and update your profile details and credentials promptly.\n\nBest regards,\nOperations Team",
+  "timestamp": "2026-06-11T15:54:30.167Z"
+}

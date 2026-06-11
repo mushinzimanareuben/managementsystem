@@ -17,6 +17,8 @@ import adRoutes from './routes/ads.js';
 import submissionRoutes from './routes/submissions.js';
 import analyticsRoutes from './routes/analytics.js';
 import exportRoutes from './routes/export.js';
+import taskRoutes from './routes/tasks.js';
+import logRoutes from './routes/logs.js';
 
 dotenv.config();
 
@@ -31,6 +33,12 @@ const __dirname = path.dirname(__filename);
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Ensure mock inbox folder exists
+const inboxDir = path.join(__dirname, 'inbox_mock');
+if (!fs.existsSync(inboxDir)) {
+  fs.mkdirSync(inboxDir, { recursive: true });
 }
 
 // Middleware
@@ -49,6 +57,8 @@ app.use('/api/ads', adRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/export', exportRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/logs', logRoutes);
 
 app.get('/', (req, res) => {
   res.json({ status: 'Smart Company Management System backend running', api: '/api/health' });

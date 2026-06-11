@@ -3,6 +3,7 @@ import { Op } from 'sequelize';
 import { Advertisement } from '../models/index.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { upload, handleUpload } from '../middleware/upload.js';
+import { logActivity } from '../middleware/audit.js';
 
 const router = express.Router();
 
@@ -77,6 +78,14 @@ router.post('/', protect, adminOnly, upload.single('media'), async (req, res) =>
       status: status || 'active'
     });
 
+    await logActivity(
+      req.user.id,
+      req.user.email,
+      'create_ad',
+      { adId: ad.id, title: ad.title },
+      req.ip
+    );
+
     res.status(201).json(ad);
   } catch (error) {
     console.error('Create ad error:', error);
@@ -109,6 +118,15 @@ router.put('/:id', protect, adminOnly, upload.single('media'), async (req, res) 
     if (status) ad.status = status;
 
     await ad.save();
+
+    await logActivity(
+      req.user.id,
+      req.user.email,
+      'update_ad',
+      { adId: ad.id, title: ad.title },
+      req.ip
+    );
+
     res.json(ad);
   } catch (error) {
     console.error('Update ad error:', error);
@@ -126,7 +144,19 @@ router.delete('/:id', protect, adminOnly, async (req, res) => {
       return res.status(404).json({ message: 'Advertisement not found' });
     }
 
+    const adId = ad.id;
+    const adTitle = ad.title;
+
     await ad.destroy();
+
+    await logActivity(
+      req.user.id,
+      req.user.email,
+      'delete_ad',
+      { adId, title: adTitle },
+      req.ip
+    );
+
     res.json({ message: 'Advertisement successfully deleted' });
   } catch (error) {
     console.error('Delete ad error:', error);

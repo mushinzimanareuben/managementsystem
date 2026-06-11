@@ -1,0 +1,8 @@
+{
+  "id": "mail_1781193267191_vterl2gyc",
+  "from": "no-reply@company.com",
+  "to": "john@test.com",
+  "subject": "Inquiry Received: API Test Inquiry",
+  "body": "Dear John Test,\n\nThank you for reaching out to us. We have successfully received your message regarding: \"API Test Inquiry\".\n\nOur customer relations team will review it and reply to you as soon as possible.\n\nBest regards,\nClient Services Team",
+  "timestamp": "2026-06-11T15:54:27.191Z"
+}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { 
-  Users, Briefcase, BarChart3, MessageSquare, Plus, Edit2, Trash2, Eye, Download, LogOut, Check, Search, Calendar, FileText, X
+  Users, Briefcase, BarChart3, MessageSquare, Plus, Edit2, Trash2, Eye, Download, LogOut, Check, Search, Calendar, FileText, X, CheckSquare
 } from 'lucide-react';
 import { Bar, Pie } from 'react-chartjs-2';
 import {
@@ -45,6 +45,56 @@ export default function AdminDashboard() {
   const [empDeptFilter, setEmpDeptFilter] = useState('');
   const [subTypeFilter, setSubTypeFilter] = useState('');
 
+  // Pagination States
+  const [employeesPage, setEmployeesPage] = useState(1);
+  const [employeesTotalPages, setEmployeesTotalPages] = useState(1);
+  const [employeesLimit] = useState(10);
+
+  const [jobsPage, setJobsPage] = useState(1);
+  const [jobsTotalPages, setJobsTotalPages] = useState(1);
+  const [jobsLimit] = useState(10);
+
+  const [submissionsPage, setSubmissionsPage] = useState(1);
+  const [submissionsTotalPages, setSubmissionsTotalPages] = useState(1);
+  const [submissionsLimit] = useState(10);
+
+  // Tasks States
+  const [tasks, setTasks] = useState([]);
+  const [tasksPage, setTasksPage] = useState(1);
+  const [tasksTotalPages, setTasksTotalPages] = useState(1);
+  const [tasksLimit] = useState(10);
+  const [tasksSearch, setTasksSearch] = useState('');
+  const [tasksStatusFilter, setTasksStatusFilter] = useState('');
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [taskForm, setTaskForm] = useState({ title: '', description: '', dueDate: '', status: 'pending', assignedTo: '' });
+  const [allActiveEmployees, setAllActiveEmployees] = useState([]);
+
+  // Audit Logs States
+  const [logs, setLogs] = useState([]);
+  const [logsPage, setLogsPage] = useState(1);
+  const [logsTotalPages, setLogsTotalPages] = useState(1);
+  const [logsLimit] = useState(15);
+  const [logsSearch, setLogsSearch] = useState('');
+  const [logsActionFilter, setLogsActionFilter] = useState('');
+
+  // Reset page parameters on filter changes to prevent staying on empty pages
+  useEffect(() => {
+    setEmployeesPage(1);
+  }, [empSearch, empDeptFilter]);
+
+  useEffect(() => {
+    setSubmissionsPage(1);
+  }, [subTypeFilter]);
+
+  useEffect(() => {
+    setTasksPage(1);
+  }, [tasksSearch, tasksStatusFilter]);
+
+  useEffect(() => {
+    setLogsPage(1);
+  }, [logsSearch, logsActionFilter]);
+
   // Load Dashboard Stats
   const loadDashboardData = () => {
     fetch(`${API_URL}/analytics/dashboard`, {
@@ -61,19 +111,40 @@ export default function AdminDashboard() {
 
   // Load Lists
   const loadEmployees = () => {
-    const query = new URLSearchParams({ search: empSearch, department: empDeptFilter });
+    const query = new URLSearchParams({ 
+      search: empSearch, 
+      department: empDeptFilter,
+      page: employeesPage,
+      limit: employeesLimit
+    });
     fetch(`${API_URL}/employees?${query.toString()}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
-      .then(data => setEmployees(data.employees || []))
+      .then(data => {
+        setEmployees(data.employees || []);
+        setEmployeesTotalPages(data.totalPages || 1);
+      })
       .catch(console.error);
   };
 
   const loadJobs = () => {
-    fetch(`${API_URL}/jobs?showClosed=true`)
+    const query = new URLSearchParams({
+      showClosed: 'true',
+      page: jobsPage,
+      limit: jobsLimit
+    });
+    fetch(`${API_URL}/jobs?${query.toString()}`)
       .then(res => res.json())
-      .then(data => setJobs(data))
+      .then(data => {
+        if (data.jobs) {
+          setJobs(data.jobs);
+          setJobsTotalPages(data.totalPages || 1);
+        } else {
+          setJobs(data || []);
+          setJobsTotalPages(1);
+        }
+      })
       .catch(console.error);
   };
 
@@ -85,13 +156,71 @@ export default function AdminDashboard() {
   };
 
   const loadSubmissions = () => {
-    const query = new URLSearchParams();
+    const query = new URLSearchParams({
+      page: submissionsPage,
+      limit: submissionsLimit
+    });
     if (subTypeFilter) query.append('type', subTypeFilter);
     fetch(`${API_URL}/submissions?${query.toString()}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
-      .then(data => setSubmissions(data))
+      .then(data => {
+        if (data.submissions) {
+          setSubmissions(data.submissions);
+          setSubmissionsTotalPages(data.totalPages || 1);
+        } else {
+          setSubmissions(data || []);
+          setSubmissionsTotalPages(1);
+        }
+      })
+      .catch(console.error);
+  };
+
+  const loadTasks = () => {
+    const query = new URLSearchParams({
+      page: tasksPage,
+      limit: tasksLimit,
+      search: tasksSearch,
+      status: tasksStatusFilter
+    });
+    fetch(`${API_URL}/tasks?${query.toString()}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        setTasks(data.tasks || []);
+        setTasksTotalPages(data.totalPages || 1);
+      })
+      .catch(console.error);
+  };
+
+  const loadAllActiveEmployees = () => {
+    fetch(`${API_URL}/employees?limit=1000&status=active`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        setAllActiveEmployees(data.employees || []);
+      })
+      .catch(console.error);
+  };
+
+  const loadLogs = () => {
+    const query = new URLSearchParams({
+      page: logsPage,
+      limit: logsLimit,
+      search: logsSearch,
+      action: logsActionFilter
+    });
+    fetch(`${API_URL}/logs?${query.toString()}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        setLogs(data.logs || []);
+        setLogsTotalPages(data.totalPages || 1);
+      })
       .catch(console.error);
   };
 
@@ -102,7 +231,12 @@ export default function AdminDashboard() {
     if (activeTab === 'jobs') loadJobs();
     if (activeTab === 'ads') loadAds();
     if (activeTab === 'submissions') loadSubmissions();
-  }, [activeTab, empSearch, empDeptFilter, subTypeFilter]);
+    if (activeTab === 'tasks') {
+      loadTasks();
+      loadAllActiveEmployees();
+    }
+    if (activeTab === 'logs') loadLogs();
+  }, [activeTab, empSearch, empDeptFilter, subTypeFilter, employeesPage, jobsPage, submissionsPage, tasksPage, tasksSearch, tasksStatusFilter, logsPage, logsSearch, logsActionFilter]);
 
   // CRUD handlers
   // 1. Employees
@@ -128,9 +262,13 @@ export default function AdminDashboard() {
         setEmpForm({ fullName: '', email: '', phoneNumber: '', position: '', department: 'Engineering', salary: '', address: '', status: 'active' });
         loadEmployees();
         loadDashboardData();
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || 'Failed to save employee');
       }
     } catch (err) {
       console.error(err);
+      alert('Network error: failed to save employee');
     }
   };
 
@@ -221,7 +359,46 @@ export default function AdminDashboard() {
     }
   };
 
-  // 4. Submissions Update Status
+  // 4. Tasks CRUD handlers
+  const handleSaveTask = async (e) => {
+    e.preventDefault();
+    const url = selectedTask ? `${API_URL}/tasks/${selectedTask.id}` : `${API_URL}/tasks`;
+    const method = selectedTask ? 'PUT' : 'POST';
+
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(taskForm)
+      });
+      if (response.ok) {
+        setShowTaskModal(false);
+        setSelectedTask(null);
+        setTaskForm({ title: '', description: '', dueDate: '', status: 'pending', assignedTo: '' });
+        loadTasks();
+      } else {
+        const errData = await response.json();
+        alert(errData.message || 'Failed to save task');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteTask = async (id) => {
+    if (window.confirm('Are you sure you want to delete this task?')) {
+      await fetch(`${API_URL}/tasks/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      loadTasks();
+    }
+  };
+
+  // 5. Submissions Update Status
   const handleUpdateSubStatus = async (id, status) => {
     await fetch(`${API_URL}/submissions/${id}/status`, {
       method: 'PUT',
@@ -278,6 +455,40 @@ export default function AdminDashboard() {
     }]
   };
 
+  const renderPagination = (currentPage, totalPages, onPageChange) => {
+    if (totalPages <= 1) return null;
+    return (
+      <div className="flex justify-center align-center gap-1" style={{ marginTop: '1.5rem' }}>
+        <button 
+          className="btn btn-secondary" 
+          style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} 
+          disabled={currentPage === 1} 
+          onClick={() => onPageChange(currentPage - 1)}
+        >
+          Prev
+        </button>
+        {[...Array(totalPages).keys()].map(page => (
+          <button 
+            key={page + 1} 
+            className={`btn ${currentPage === page + 1 ? 'btn-primary' : 'btn-secondary'}`} 
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} 
+            onClick={() => onPageChange(page + 1)}
+          >
+            {page + 1}
+          </button>
+        ))}
+        <button 
+          className="btn btn-secondary" 
+          style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} 
+          disabled={currentPage === totalPages} 
+          onClick={() => onPageChange(currentPage + 1)}
+        >
+          Next
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div className="dashboard-layout">
       {/* Sidebar */}
@@ -307,6 +518,16 @@ export default function AdminDashboard() {
           <li>
             <button className={`sidebar-link ${activeTab === 'submissions' ? 'active' : ''}`} onClick={() => setActiveTab('submissions')}>
               <MessageSquare size={18} /> Submissions Hub
+            </button>
+          </li>
+          <li>
+            <button className={`sidebar-link ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>
+              <CheckSquare size={18} /> Task Board
+            </button>
+          </li>
+          <li>
+            <button className={`sidebar-link ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => setActiveTab('logs')}>
+              <FileText size={18} /> Audit Logs
             </button>
           </li>
         </ul>
@@ -503,6 +724,8 @@ export default function AdminDashboard() {
               </table>
             </div>
 
+            {renderPagination(employeesPage, employeesTotalPages, setEmployeesPage)}
+
             {/* Employee Modal */}
             {showEmpModal && (
               <div className="modal-overlay">
@@ -637,6 +860,8 @@ export default function AdminDashboard() {
                 </tbody>
               </table>
             </div>
+
+            {renderPagination(jobsPage, jobsTotalPages, setJobsPage)}
 
             {/* Job Modal */}
             {showJobModal && (
@@ -940,6 +1165,266 @@ export default function AdminDashboard() {
                 </tbody>
               </table>
             </div>
+
+            {renderPagination(submissionsPage, submissionsTotalPages, setSubmissionsPage)}
+          </div>
+        )}
+
+        {/* Task Board Tab */}
+        {activeTab === 'tasks' && (
+          <div className="animate-fade-in">
+            <div className="dashboard-header flex justify-between align-center flex-wrap-mobile gap-2">
+              <div>
+                <h2>Task Board & Assignment</h2>
+                <p style={{ color: 'var(--text-secondary)' }}>Assign tasks to employees and track their progress status.</p>
+              </div>
+              <button className="btn btn-primary" onClick={() => { setSelectedTask(null); setTaskForm({ title: '', description: '', dueDate: '', status: 'pending', assignedTo: '' }); setShowTaskModal(true); }}>
+                <Plus size={16} /> Assign New Task
+              </button>
+            </div>
+
+            {/* Filters */}
+            <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
+              <div className="flex gap-2 flex-wrap-mobile align-center">
+                <div className="flex align-center gap-1 form-group" style={{ marginBottom: 0, flex: 2 }}>
+                  <Search size={18} />
+                  <input type="text" className="form-input" placeholder="Search tasks by title..." value={tasksSearch} onChange={e => setTasksSearch(e.target.value)} />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
+                  <select className="form-select" value={tasksStatusFilter} onChange={e => setTasksStatusFilter(e.target.value)}>
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Tasks List */}
+            <div className="table-container">
+              <table className="custom-table">
+                <thead>
+                  <tr>
+                    <th>Task Title</th>
+                    <th>Description</th>
+                    <th>Assigned To</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tasks.map(task => (
+                    <tr key={task.id}>
+                      <td><strong>{task.title}</strong></td>
+                      <td>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                          {task.description || 'No description provided.'}
+                        </span>
+                      </td>
+                      <td>
+                        {task.employee ? (
+                          <div>
+                            <strong>{task.employee.fullName}</strong>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{task.employee.position}</div>
+                          </div>
+                        ) : 'Unassigned'}
+                      </td>
+                      <td>{task.dueDate || 'N/A'}</td>
+                      <td>
+                        <span className={`badge ${task.status === 'completed' ? 'badge-success' : task.status === 'in_progress' ? 'badge-primary' : 'badge-warning'}`}>
+                          {task.status.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="flex gap-1">
+                          <button className="btn-icon" onClick={() => {
+                            setSelectedTask(task);
+                            setTaskForm({
+                              title: task.title,
+                              description: task.description || '',
+                              dueDate: task.dueDate || '',
+                              status: task.status,
+                              assignedTo: task.assignedTo
+                            });
+                            setShowTaskModal(true);
+                          }}>
+                            <Edit2 size={14} />
+                          </button>
+                          <button className="btn-icon" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteTask(task.id)}>
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {tasks.length === 0 && (
+                    <tr>
+                      <td colSpan="6" className="text-center" style={{ padding: '2rem' }}>No tasks found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {renderPagination(tasksPage, tasksTotalPages, setTasksPage)}
+
+            {/* Task Modal */}
+            {showTaskModal && (
+              <div className="modal-overlay">
+                <div className="modal-content">
+                  <button className="modal-close" onClick={() => setShowTaskModal(false)}><X size={20} /></button>
+                  <h3>{selectedTask ? 'Edit Assigned Task' : 'Assign New Task'}</h3>
+                  <form onSubmit={handleSaveTask} style={{ marginTop: '1.5rem' }}>
+                    <div className="form-group">
+                      <label className="form-label">Task Title</label>
+                      <input type="text" className="form-input" value={taskForm.title} onChange={e => setTaskForm({ ...taskForm, title: e.target.value })} required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Task Description</label>
+                      <textarea className="form-textarea" value={taskForm.description} onChange={e => setTaskForm({ ...taskForm, description: e.target.value })} />
+                    </div>
+                    <div className="grid grid-2">
+                      <div className="form-group">
+                        <label className="form-label">Due Date</label>
+                        <input type="date" className="form-input" value={taskForm.dueDate} onChange={e => setTaskForm({ ...taskForm, dueDate: e.target.value })} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Assign To</label>
+                        <select className="form-select" value={taskForm.assignedTo} onChange={e => setTaskForm({ ...taskForm, assignedTo: e.target.value })} required>
+                          <option value="">Select Employee</option>
+                          {allActiveEmployees.map(emp => (
+                            <option key={emp.id} value={emp.id}>
+                              {emp.fullName} ({emp.position} - {emp.department})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    {selectedTask && (
+                      <div className="form-group">
+                        <label className="form-label">Task Status</label>
+                        <select className="form-select" value={taskForm.status} onChange={e => setTaskForm({ ...taskForm, status: e.target.value })} required>
+                          <option value="pending">Pending</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                      </div>
+                    )}
+                    <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1.5rem' }}>
+                      {selectedTask ? 'Save Changes' : 'Assign Task'}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Audit Logs Tab */}
+        {activeTab === 'logs' && (
+          <div className="animate-fade-in">
+            <div className="dashboard-header">
+              <h2>System Audit Logs</h2>
+              <p style={{ color: 'var(--text-secondary)' }}>Review recent system changes, activity logs, and administration operations.</p>
+            </div>
+
+            {/* Filters */}
+            <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
+              <div className="flex gap-2 flex-wrap-mobile align-center">
+                <div className="flex align-center gap-1 form-group" style={{ marginBottom: 0, flex: 2 }}>
+                  <Search size={18} />
+                  <input type="text" className="form-input" placeholder="Search by email, action or details..." value={logsSearch} onChange={e => setLogsSearch(e.target.value)} />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
+                  <select className="form-select" value={logsActionFilter} onChange={e => setLogsActionFilter(e.target.value)}>
+                    <option value="">All Action Types</option>
+                    <option value="login">Login</option>
+                    <option value="create_employee">Create Employee</option>
+                    <option value="update_employee">Update Employee</option>
+                    <option value="delete_employee">Delete Employee</option>
+                    <option value="create_job">Create Job</option>
+                    <option value="update_job">Update Job</option>
+                    <option value="delete_job">Delete Job</option>
+                    <option value="create_task">Create Task</option>
+                    <option value="update_task">Update Task</option>
+                    <option value="delete_task">Delete Task</option>
+                    <option value="create_submission">Create Submission</option>
+                    <option value="update_submission_status">Update Submission Status</option>
+                    <option value="delete_submission">Delete Submission</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Logs List */}
+            <div className="table-container">
+              <table className="custom-table" style={{ tableLayout: 'fixed', width: '100%' }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: '170px' }}>Timestamp</th>
+                    <th style={{ width: '200px' }}>User Email</th>
+                    <th style={{ width: '180px' }}>Action</th>
+                    <th>Details</th>
+                    <th style={{ width: '130px' }}>IP Address</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map(log => {
+                    let parsedDetails = null;
+                    try {
+                      parsedDetails = log.details ? JSON.parse(log.details) : null;
+                    } catch {
+                      parsedDetails = log.details;
+                    }
+
+                    return (
+                      <tr key={log.id}>
+                        <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {new Date(log.createdAt).toLocaleString()}
+                        </td>
+                        <td style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {log.userEmail || 'anonymous'}
+                        </td>
+                        <td>
+                          <span className={`badge ${
+                            log.action.startsWith('create') ? 'badge-success' : 
+                            log.action.startsWith('update') ? 'badge-primary' : 
+                            log.action.startsWith('delete') ? 'badge-danger' : 'badge-warning'
+                          }`}>
+                            {log.action.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: '0.85rem', verticalAlign: 'top', wordBreak: 'break-all' }}>
+                          {parsedDetails && typeof parsedDetails === 'object' ? (
+                            <div style={{ backgroundColor: 'var(--bg-tertiary)', padding: '0.5rem', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                              {Object.entries(parsedDetails).map(([key, val]) => (
+                                <div key={key} style={{ marginBottom: '0.15rem' }}>
+                                  <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{key}:</span> {String(val)}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span>{log.details || 'None'}</span>
+                          )}
+                        </td>
+                        <td style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)' }}>
+                          {log.ipAddress || 'unknown'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {logs.length === 0 && (
+                    <tr>
+                      <td colSpan="5" className="text-center" style={{ padding: '2rem' }}>No system logs found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {renderPagination(logsPage, logsTotalPages, setLogsPage)}
           </div>
         )}
       </main>

@@ -2,6 +2,7 @@ import express from 'express';
 import { Op } from 'sequelize';
 import { Job } from '../models/index.js';
 import { protect, adminOnly } from '../middleware/auth.js';
+import { logActivity } from '../middleware/audit.js';
 
 const router = express.Router();
 
@@ -10,7 +11,7 @@ const router = express.Router();
 // @access  Public
 router.get('/', async (req, res) => {
   try {
-    const { search = '', department = '', type = '', location = '', showClosed = 'false' } = req.query;
+    const { page, limit, search = '', department = '', type = '', location = '', showClosed = 'false' } = req.query;
 
     const whereClause = {};
 
@@ -35,12 +36,31 @@ router.get('/', async (req, res) => {
       whereClause.location = location;
     }
 
-    const jobs = await Job.findAll({
-      where: whereClause,
-      order: [['createdAt', 'DESC']]
-    });
+    if (page || limit) {
+      const p = parseInt(page) || 1;
+      const l = parseInt(limit) || 10;
+      const offset = (p - 1) * l;
 
-    res.json(jobs);
+      const { count, rows: jobs } = await Job.findAndCountAll({
+        where: whereClause,
+        limit: l,
+        offset: offset,
+        order: [['createdAt', 'DESC']]
+      });
+
+      return res.json({
+        jobs,
+        totalPages: Math.ceil(count / l),
+        currentPage: p,
+        totalJobs: count
+      });
+    } else {
+      const jobs = await Job.findAll({
+        where: whereClause,
+        order: [['createdAt', 'DESC']]
+      });
+      return res.json(jobs);
+    }
   } catch (error) {
     console.error('Get jobs error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -81,6 +101,14 @@ router.post('/', protect, adminOnly, async (req, res) => {
       status: status || 'open'
     });
 
+    await logActivity(
+      req.user.id,
+      req.user.email,
+      'create_job',
+      { jobId: job.id, title: job.title },
+      req.ip
+    );
+
     res.status(201).json(job);
   } catch (error) {
     console.error('Create job error:', error);
@@ -110,6 +138,15 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     if (status) job.status = status;
 
     await job.save();
+
+    await logActivity(
+      req.user.id,
+      req.user.email,
+      'update_job',
+      { jobId: job.id, title: job.title },
+      req.ip
+    );
+
     res.json(job);
   } catch (error) {
     console.error('Update job error:', error);
@@ -127,7 +164,19 @@ router.delete('/:id', protect, adminOnly, async (req, res) => {
       return res.status(404).json({ message: 'Job not found' });
     }
 
+    const jobId = job.id;
+    const jobTitle = job.title;
+
     await job.destroy();
+
+    await logActivity(
+      req.user.id,
+      req.user.email,
+      'delete_job',
+      { jobId, title: jobTitle },
+      req.ip
+    );
+
     res.json({ message: 'Job listing successfully deleted' });
   } catch (error) {
     console.error('Delete job error:', error);

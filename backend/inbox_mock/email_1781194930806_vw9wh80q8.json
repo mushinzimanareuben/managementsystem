@@ -1,0 +1,8 @@
+{
+  "id": "mail_1781194930806_vw9wh80q8",
+  "from": "no-reply@company.com",
+  "to": "sales@company.com",
+  "subject": "[New Inquiry] API Test Inquiry - John Test",
+  "body": "A new contact submission has been received:\n\nName: John Test\nEmail: john@test.com\nSubject: API Test Inquiry\nMessage: This is an automated API validation test submission.",
+  "timestamp": "2026-06-11T16:22:10.806Z"
+}

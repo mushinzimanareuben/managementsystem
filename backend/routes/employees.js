@@ -4,6 +4,8 @@ import { Op } from 'sequelize';
 import { Employee, User } from '../models/index.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { upload, handleUpload } from '../middleware/upload.js';
+import { logActivity } from '../middleware/audit.js';
+import { sendMockEmail } from '../services/email.js';
 
 const router = express.Router();
 
@@ -120,6 +122,21 @@ router.post('/', protect, adminOnly, upload.single('photo'), async (req, res) =>
       userId: user.id
     });
 
+    await logActivity(
+      req.user.id,
+      req.user.email,
+      'create_employee',
+      { employeeId: employee.id, fullName: employee.fullName, email: employee.email },
+      req.ip
+    );
+
+    // Send credentials email
+    await sendMockEmail({
+      to: email,
+      subject: 'Welcome to Smart Company - Your Employee Account Created',
+      body: `Hello ${fullName},\n\nYour employee account has been created successfully.\n\nCredentials:\nEmail: ${email}\nPassword: ${defaultPassword}\n\nPlease login and update your profile details and credentials promptly.\n\nBest regards,\nOperations Team`
+    });
+
     res.status(201).json(employee);
   } catch (error) {
     console.error('Create employee error:', error);
@@ -168,7 +185,13 @@ router.put('/:id', protect, upload.single('photo'), async (req, res) => {
 
     await employee.save();
 
-    // Also update email in User table if changed (Admin-only capability, though disabled here for simplicity)
+    await logActivity(
+      req.user.id,
+      req.user.email,
+      'update_employee',
+      { employeeId: employee.id, fullName: employee.fullName },
+      req.ip
+    );
     
     res.json(employee);
   } catch (error) {
@@ -188,6 +211,9 @@ router.delete('/:id', protect, adminOnly, async (req, res) => {
     }
 
     const associatedUserId = employee.userId;
+    const empId = employee.id;
+    const empName = employee.fullName;
+    const empEmail = employee.email;
 
     // Delete Employee record
     await employee.destroy();
@@ -196,6 +222,14 @@ router.delete('/:id', protect, adminOnly, async (req, res) => {
     if (associatedUserId) {
       await User.destroy({ where: { id: associatedUserId } });
     }
+
+    await logActivity(
+      req.user.id,
+      req.user.email,
+      'delete_employee',
+      { employeeId: empId, fullName: empName, email: empEmail },
+      req.ip
+    );
 
     res.json({ message: 'Employee and user login successfully deleted' });
   } catch (error) {

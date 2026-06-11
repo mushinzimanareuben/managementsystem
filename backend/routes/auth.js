@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { User, Employee } from '../models/index.js';
 import { protect } from '../middleware/auth.js';
+import { logActivity } from '../middleware/audit.js';
 
 const router = express.Router();
 
@@ -54,13 +55,17 @@ router.post('/login', async (req, res) => {
   try {
     const user = await User.findOne({ where: { email } });
     if (!user) {
+      await logActivity(null, email, 'login_failure', { reason: 'User not found' }, req.ip);
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      await logActivity(user.id, user.email, 'login_failure', { reason: 'Incorrect password' }, req.ip);
       return res.status(401).json({ message: 'Invalid email or password' });
     }
+
+    await logActivity(user.id, user.email, 'login_success', null, req.ip);
 
     res.json({
       id: user.id,

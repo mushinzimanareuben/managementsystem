@@ -166,6 +166,102 @@ test('GET /api/export/submissions/excel (query token) → 200 Excel file', async
   assert(res.status === 200, `Expected 200, got ${res.status}`);
 });
 
+// --- New Features Tests ---
+let employeeToken = null;
+let employeeId = null;
+let taskId = null;
+
+test('POST /api/employees (admin) → 201 creates employee & user account', async () => {
+  const res = await request('POST', '/employees', {
+    fullName: 'Test Employee One',
+    email: 'employee_test_email@example.com',
+    phoneNumber: '+250785000000',
+    position: 'Quality Analyst',
+    department: 'Engineering',
+    salary: 50000,
+    address: 'Kigali, Rwanda',
+    status: 'active'
+  }, adminToken);
+  assert(res.status === 201, `Expected 201, got ${res.status} – ${JSON.stringify(res.body)}`);
+  employeeId = res.body.id;
+  assert(employeeId, 'Expected employee ID in response');
+});
+
+test('POST /api/auth/login (employee) → 200 with JWT', async () => {
+  const res = await request('POST', '/auth/login', {
+    email: 'employee_test_email@example.com',
+    password: 'Employee123!'
+  });
+  assert(res.status === 200, `Expected 200, got ${res.status}`);
+  employeeToken = res.body.token;
+});
+
+test('POST /api/tasks (admin) → 201 assigns task to employee', async () => {
+  const res = await request('POST', '/tasks', {
+    title: 'Validate SCMS API Endpoints',
+    description: 'Ensure all tests pass and audit logging works.',
+    dueDate: '2026-06-15',
+    assignedTo: employeeId
+  }, adminToken);
+  assert(res.status === 201, `Expected 201, got ${res.status}`);
+  taskId = res.body.id;
+  assert(taskId, 'Expected task ID in response');
+  assert(res.body.status === 'pending', 'Expected default status pending');
+});
+
+test('GET /api/tasks (employee) → 200 with paginated tasks', async () => {
+  const res = await request('GET', '/tasks?page=1&limit=5', null, employeeToken);
+  assert(res.status === 200, `Expected 200, got ${res.status}`);
+  assert(Array.isArray(res.body.tasks), 'Expected tasks array');
+  assert(res.body.tasks.length === 1, `Expected 1 task, got ${res.body.tasks.length}`);
+  assert(res.body.totalTasks === 1, `Expected totalTasks 1, got ${res.body.totalTasks}`);
+});
+
+test('PUT /api/tasks/:id (employee status only) → 200 updates task status', async () => {
+  const res = await request('PUT', `/tasks/${taskId}`, {
+    status: 'in_progress'
+  }, employeeToken);
+  assert(res.status === 200, `Expected 200, got ${res.status}`);
+  assert(res.body.status === 'in_progress', 'Expected updated status to be in_progress');
+});
+
+test('PUT /api/tasks/:id (employee try update title) → 200 updates status only', async () => {
+  const res = await request('PUT', `/tasks/${taskId}`, {
+    title: 'Hack Title Attempt',
+    status: 'completed'
+  }, employeeToken);
+  assert(res.status === 200, `Expected 200, got ${res.status}`);
+  assert(res.body.status === 'completed', 'Expected status update');
+  assert(res.body.title === 'Validate SCMS API Endpoints', 'Employee should not be able to modify title');
+});
+
+test('GET /api/logs (admin) → 200 system audit logs', async () => {
+  const res = await request('GET', '/logs?page=1&limit=10', null, adminToken);
+  assert(res.status === 200, `Expected 200, got ${res.status}`);
+  assert(Array.isArray(res.body.logs), 'Expected logs array');
+  assert(res.body.totalLogs >= 3, `Expected at least 3 logs, got ${res.body.totalLogs}`);
+});
+
+test('GET /api/jobs (with pagination) → 200 paginated jobs', async () => {
+  const res = await request('GET', '/jobs?page=1&limit=1');
+  assert(res.status === 200, `Expected 200, got ${res.status}`);
+  assert(res.body.jobs !== undefined, 'Expected jobs wrapper object');
+  assert(Array.isArray(res.body.jobs), 'Expected jobs array');
+  assert(res.body.currentPage === 1, 'Expected current page 1');
+});
+
+test('GET /api/submissions (with pagination) → 200 paginated submissions', async () => {
+  const res = await request('GET', '/submissions?page=1&limit=5', null, adminToken);
+  assert(res.status === 200, `Expected 200, got ${res.status}`);
+  assert(res.body.submissions !== undefined, 'Expected submissions wrapper');
+  assert(res.body.currentPage === 1, 'Expected current page 1');
+});
+
+test('CLEANUP: DELETE /api/employees/:id (admin) → 200', async () => {
+  const res = await request('DELETE', `/employees/${employeeId}`, null, adminToken);
+  assert(res.status === 200, `Expected 200, got ${res.status}`);
+});
+
 // --- Runner ---
 async function run() {
   console.log('\n🔬 SCMS API Validation Tests\n' + '─'.repeat(50));

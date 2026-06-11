@@ -218,8 +218,77 @@ const Submission = sequelize.define('Submission', {
   timestamps: true
 });
 
+// Task Model
+const Task = sequelize.define('Task', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
+  },
+  title: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  dueDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true
+  },
+  status: {
+    type: DataTypes.ENUM('pending', 'in_progress', 'completed'),
+    defaultValue: 'pending',
+    allowNull: false
+  },
+  assignedTo: {
+    type: DataTypes.UUID,
+    allowNull: false
+  }
+}, {
+  timestamps: true
+});
+
+// AuditLog Model
+const AuditLog = sequelize.define('AuditLog', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
+  },
+  userId: {
+    type: DataTypes.UUID,
+    allowNull: true
+  },
+  userEmail: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  action: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  details: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  ipAddress: {
+    type: DataTypes.STRING,
+    allowNull: true
+  }
+}, {
+  timestamps: true
+});
+
 // Associations
 User.hasOne(Employee, { foreignKey: 'userId', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
 Employee.belongsTo(User, { foreignKey: 'userId' });
 
-export { User, Employee, Job, Advertisement, Submission };
+Employee.hasMany(Task, { foreignKey: 'assignedTo', onDelete: 'CASCADE' });
+Task.belongsTo(Employee, { foreignKey: 'assignedTo', as: 'employee' });
+
+User.hasMany(AuditLog, { foreignKey: 'userId', onDelete: 'SET NULL' });
+AuditLog.belongsTo(User, { foreignKey: 'userId' });
+
+export { User, Employee, Job, Advertisement, Submission, Task, AuditLog };
