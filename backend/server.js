@@ -45,9 +45,13 @@ if (!fs.existsSync(inboxDir)) {
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
+  // Support both firebase project IDs in case FRONTEND_URL env var hasn't been updated on Render
+  'https://managementsystem-b2200.web.app',
+  'https://managementsystem-b2200.firebaseapp.com',
+  'https://managementsystem-44ae6.web.app',
+  'https://managementsystem-44ae6.firebaseapp.com',
   ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(o => o.trim()) : [])
 ].filter(Boolean);
-
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -56,10 +60,12 @@ app.use(cors({
     if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
       return callback(null, true);
     }
-    callback(new Error('Not allowed by CORS'));
+    // Return false (reject) instead of error to avoid Express 500
+    return callback(null, false);
   },
   credentials: true
 }));
+
 app.use(express.json());
 app.use(morgan('dev'));
 
