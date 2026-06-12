@@ -45,8 +45,9 @@ if (!fs.existsSync(inboxDir)) {
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
-  process.env.FRONTEND_URL // Set this in Render env vars to your deployed frontend URL
+  ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(o => o.trim()) : [])
 ].filter(Boolean);
+
 
 app.use(cors({
   origin: function (origin, callback) {

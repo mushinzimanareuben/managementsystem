@@ -1,7 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import { Op } from 'sequelize';
-import { Employee, User } from '../models/index.js';
+import { Employee, User, Task } from '../models/index.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { upload, handleUpload } from '../middleware/upload.js';
 import { logActivity } from '../middleware/audit.js';
@@ -214,6 +214,9 @@ router.delete('/:id', protect, adminOnly, async (req, res) => {
     const empId = employee.id;
     const empName = employee.fullName;
     const empEmail = employee.email;
+
+    // Delete associated tasks first to avoid SQLite/Postgres Foreign Key constraint errors
+    await Task.destroy({ where: { assignedTo: empId } });
 
     // Delete Employee record
     await employee.destroy();
